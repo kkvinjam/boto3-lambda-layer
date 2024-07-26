@@ -29,9 +29,9 @@ do
        ;;
     -p=*|--python=*)
        pythonversion="${i#*=}"
-       if [ $pythonversion != '2.7' ] && [ $pythonversion != '3.6' ] && [ $pythonversion != '3.7' ] 
+       if [ $pythonversion != '3.10' ] && [ $pythonversion != '3.11' ] && [ $pythonversion != '3.12' ] 
        then
-         echo "Possible values for python version: 2.7 | 3.6 | 3.7"
+         echo "Possible values for python version: 3.10 | 3.11 | 3.12"
          exit 1
        fi
        ;;
@@ -54,7 +54,7 @@ OPTIONS\n
 \n
 \t -p | --python : (Optional) Specify the version of python for which you want to create the layer.\n
 \t\t\t If not specified, will create for all versions of python.\n
-\t\t\t Possible values: 2.7 | 3.6 | 3.7\n
+\t\t\t Possible values: 3.10 | 3.11 | 3.12\n
 \n
 \t  -r | --region : (Optional) Specify the region in which you want to create the layer.\n
 \t\t\t If not specified, use the region configured with AWS cli.\n
@@ -98,21 +98,21 @@ buildpython()
   echo "### Building boto 3 package for python ${pyversion}"
   mkdir -p "/tmp/python/lib/python${pyversion}/site-packages"
   cd "/tmp/python/lib/python${pyversion}/site-packages"
-  docker run -v "$PWD":/var/task "lambci/lambda:build-python${pyversion}" /bin/sh -c "pip install boto3==$boto3version -t .; exit"
+  docker run -v "$PWD":/var/task "amazonlinux:latest" /bin/sh -c "cd /var/task; yum update; yum install python3-pip -y; pip install boto3==$boto3version -t .; exit"
 }
 
 rm -rf /tmp/python
 rm -rf /tmp/boto3_v*.zip
 
 if [ -z "${pythonversion}" ]; then
-  # Python 2.7
-  buildpython "2.7"
+  # Python 3.10
+  buildpython "3.10"
 
-  # Python 3.6
-  buildpython "3.6"
+  # Python 3.11
+  buildpython "3.11"
 
-  # Python 3.7
-  buildpython "3.7"
+  # Python 3.12
+  buildpython "3.12"
   
   cd /tmp
   zip -r boto3-$boto3version.zip python > /dev/null
@@ -131,7 +131,7 @@ echo "Please wait..."
 boto3layerversion=`echo "${boto3version}" | sed s/"\."/"-"/g`
 
 if [ -z "${pythonversion}" ]; then
-  result=`aws lambda publish-layer-version --layer-name boto3_v${boto3layerversion} --description "Boto 3 version ${boto3version}" --zip-file fileb://boto3-$boto3version.zip --compatible-runtimes "python2.7" "python3.6" "python3.7" --region ${region}`
+  result=`aws lambda publish-layer-version --layer-name boto3_v${boto3layerversion} --description "Boto 3 version ${boto3version}" --zip-file fileb://boto3-$boto3version.zip --compatible-runtimes "python3.10" "python3.11" "python3.12" --region ${region}`
 else
   pyversion=`echo "${pythonversion}" | sed s/"\."/""/g`
   result=`aws lambda publish-layer-version --layer-name boto3_v${boto3layerversion}_py${pyversion} --description "Boto 3 version ${boto3version} for python ${pythonversion}" --zip-file fileb://boto3-$boto3version-python$pythonversion.zip --compatible-runtimes "python${pythonversion}" --region ${region}`
